@@ -1,65 +1,39 @@
-from fastapi import APIRouter, Request, Form, Depends
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Request, Form
 from fastapi.templating import Jinja2Templates
-from modules.karno_module import KarnoMap
-from modules.auth_module import get_current_user
+from fastapi.responses import HTMLResponse, JSONResponse
+from modules.karno_module import minimize_sop, minimize_pos, generate_kmap_indices
+from fastapi.responses import RedirectResponse
+from modules.database_module import db
 
-router = APIRouter()
+
+templates = Jinja2Templates(directory="templates")
+karno_router = APIRouter()
+
+karno_router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
-
-@router.get("/karno", response_class=HTMLResponse)
-async def karno_page(request: Request, _: dict = Depends(get_current_user)):
-    return templates.TemplateResponse("main.html", {
-        "request": request,
-        "variables": ["A", "B", "C"],
-        "simplification_type": "sop",
-        "cell_values": [
-            [0, 0, 0, 0],
-            [0, 1, 0, 0]
-        ]
-    })
+@karno_router.get("/karno", response_class=HTMLResponse)
+async def karno_page(request: Request):
+    session_id = request.cookies.get("session_id")
+    if session_id and await db.get_session(session_id):
+        return templates.TemplateResponse("main.html", {"request": request})
+    return RedirectResponse("/login")
 
 
-@router.post("/simplify", response_class=HTMLResponse)
-async def simplify(
-        request: Request,
-        variables: str = Form(...),
-        simplification_type: str = Form(...),
-        cell_0_0: str = Form(...),
-        cell_0_1: str = Form(...),
-        cell_0_2: str = Form(...),
-        cell_0_3: str = Form(...),
-        cell_1_0: str = Form(...),
-        cell_1_1: str = Form(...),
-        cell_1_2: str = Form(...),
-        cell_1_3: str = Form(...),
-        _: dict = Depends(get_current_user)
+@karno_router.post("/karno/minimize")
+async def minimize_karno(
+    method: str = Form(...),
+    variables: str = Form(...),
+    values: str = Form(...)
 ):
-    try:
-        var_list = [v.strip() for v in variables.split(",") if v.strip()]
-        cell_values = [
-            [int(cell_0_0), int(cell_0_1), int(cell_0_2), int(cell_0_3)],
-            [int(cell_1_0), int(cell_1_1), int(cell_1_2), int(cell_1_3)]
-        ]
+    # Преобразование входных данных
+    vars_list = variables.split(",")  # ["A", "B", "C", "D"]
+    values_list = [int(x) for x in values.split(",")]  # [1,0,1,...]
+    bits = generate_kmap_indices()
 
-        result = KarnoMap.simplify(var_list, cell_values, simplification_type)
+    if method == "SOP":
+        result = minimize_sop(bits, values_list, vars_list)
+    else:
+        result = minimize_pos(bits, values_list, vars_list)
 
-        return templates.TemplateResponse("main.html", {
-            "request": request,
-            "variables": var_list,
-            "simplification_type": simplification_type,
-            "cell_values": cell_values,
-            "result": result
-        })
-    except Exception as e:
-        return templates.TemplateResponse("main.html", {
-            "request": request,
-            "error": str(e),
-            "variables": variables.split(","),
-            "simplification_type": simplification_type,
-            "cell_values": [
-                [int(cell_0_0), int(cell_0_1), int(cell_0_2), int(cell_0_3)],
-                [int(cell_1_0), int(cell_1_1), int(cell_1_2), int(cell_1_3)]
-            ]
-        })
+    return JSONResponse({"result": result})

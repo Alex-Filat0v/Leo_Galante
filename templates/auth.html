@@ -5,15 +5,15 @@
     <div class="col-md-6">
         <div class="card shadow">
             <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">{{ "Register" if mode == "register" else "Login" }}</h4>
+                <h4 class="mb-0">{{ "Регистрация" if mode == "register" else "Вход" }}</h4>
             </div>
             <div class="card-body">
                 {% if error %}
                 <div class="alert alert-danger">
                     {% if error == "username_exists" %}
-                    Username already exists. Please choose another one.
+                    Пользователь с таким именем уже существует. Пожалуйста, выберите другое имя.
                     {% elif error == "invalid_credentials" %}
-                    Invalid username or password
+                    Неверное имя пользователя или пароль
                     {% endif %}
                 </div>
                 {% endif %}
@@ -21,31 +21,31 @@
                 {% if message %}
                 <div class="alert alert-success">
                     {% if message == "registration_success" %}
-                    Registration successful! Please login
+                    Регистрация прошла успешно! Пожалуйста, войдите
                     {% endif %}
                 </div>
                 {% endif %}
 
                 <form method="post">
                     <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
+                        <label for="username" class="form-label">Имя пользователя</label>
                         <input type="text" class="form-control" id="username" name="username" required
                                value="{{ request.query_params.get('username', '') }}">
                     </div>
                     <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
+                        <label for="password" class="form-label">Пароль</label>
                         <input type="password" class="form-control" id="password" name="password" required>
                     </div>
                     <button type="submit" class="btn btn-primary w-100">
-                        {{ "Register" if mode == "register" else "Login" }}
+                        {{ "Зарегистрироваться" if mode == "register" else "Войти" }}
                     </button>
                 </form>
 
                 <div class="mt-3 text-center">
                     {% if mode == "register" %}
-                    Already have an account? <a href="/login">Login here</a>
+                    Уже есть аккаунт? <a href="/login">Войти</a>
                     {% else %}
-                    Don't have an account? <a href="/register">Register here</a>
+                    Нет аккаунта? <a href="/register">Зарегистрироваться</a>
                     {% endif %}
                 </div>
             </div>

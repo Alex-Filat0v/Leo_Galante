@@ -1,112 +1,118 @@
-{% extends "base.html" %}
-
-{% block content %}
-<div class="card shadow">
-    <div class="card-header bg-primary text-white">
-        <h4 class="mb-0">Карта Карно</h4>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Карты Карно</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .kmap-cell {
+            width: 60px;
+            height: 60px;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .kmap-cell.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+        .dropdown-menu-end {
+            right: 0;
+            left: auto;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light px-3">
+    <a class="navbar-brand" href="#">Карты Карно</a>
+    <div class="dropdown ms-auto">
+        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            Аккаунт
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/change-password">Сменить пароль</a></li>
+            <li><a class="dropdown-item" href="/logout">Выход</a></li>
+        </ul>
     </div>
-    <div class="card-body">
-        <form method="post" action="/simplify" id="karno-form">
-            <div class="mb-4">
-                <label for="variables" class="form-label">Имена переменных (через запятую)</label>
-                <input type="text" class="form-control" id="variables" name="variables"
-                       value="{{ variables|join(',') if variables else 'A,B,C' }}" required>
-            </div>
-
-            <div class="mb-4">
-                <label class="form-label">Тип упрощения</label>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="simplification_type" id="sop"
-                           value="sop" {% if simplification_type == 'sop' %}checked{% endif %}>
-                    <label class="form-check-label" for="sop">Сумма произведений</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="simplification_type" id="pos"
-                           value="pos" {% if simplification_type == 'pos' %}checked{% endif %}>
-                    <label class="form-check-label" for="pos">Произведение сумм</label>
-                </div>
-            </div>
-
-            <div class="table-responsive mb-4">
-                <table class="table table-bordered text-center karno-table">
-                    <thead>
-                        <tr>
-                            <th>{{ variables[0] if variables and variables|length > 0 else 'A' }} \ {{ variables[1:]|join('') if variables and variables|length > 1 else 'BC' }}</th>
-                            <th>00</th>
-                            <th>01</th>
-                            <th>11</th>
-                            <th>10</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in range(2) %}
-                        <tr>
-                            <th>{{ row }}</th>
-                            {% for col in range(4) %}
-                            <td class="karno-cell {% if cell_values[row][col] == 1 %}table-primary{% endif %}"
-                                onclick="toggleCell(this)">
-                                <input type="hidden" name="cell_{{ row }}_{{ col }}"
-                                       value="{{ cell_values[row][col] if cell_values else 0 }}">
-                                {{ cell_values[row][col] if cell_values else 0 }}
-                            </td>
-                            {% endfor %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <button type="submit" class="btn btn-primary">Упростить</button>
-        </form>
-
-        {% if result %}
-        <div class="card mt-4">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0">Результат</h5>
-            </div>
-            <div class="card-body">
-                <p class="mb-0">F = {{ result }}</p>
-            </div>
+</nav>
+<div class="container py-4">
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label class="form-label">Переменные (через запятую)</label>
+            <input type="text" id="variables" class="form-control" value="A,B,C,D">
         </div>
-        {% endif %}
-
-        {% if error %}
-        <div class="alert alert-danger mt-4">{{ error }}</div>
-        {% endif %}
+        <div class="col-md-4">
+            <label class="form-label">Метод минимизации</label>
+            <select class="form-select" id="method">
+                <option value="SOP">Сумма произведений (SOP)</option>
+                <option value="POS">Произведение сумм (POS)</option>
+            </select>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <table class="table table-bordered text-center">
+                <tbody id="kmap">
+                    <!-- Карта Карно 4x4 -->
+                </tbody>
+            </table>
+            <button class="btn btn-primary" onclick="minimize()">Минимизировать</button>
+        </div>
+        <div class="col-md-6">
+            <h5>Минимизированное выражение:</h5>
+            <div id="result" class="alert alert-info"></div>
+        </div>
     </div>
 </div>
-
 <script>
-function toggleCell(cell) {
-    const input = cell.querySelector('input');
-    const newValue = input.value === '1' ? '0' : '1';
-    input.value = newValue;
-    cell.textContent = newValue;
-    cell.classList.toggle('table-primary', newValue === '1');
-}
+    const kmap = document.getElementById("kmap");
+    let values = Array(16).fill(0);
 
-document.getElementById('variables').addEventListener('change', function() {
-    // Здесь можно добавить логику для изменения таблицы при изменении переменных
-    // Пока просто перезагружаем страницу
-    document.getElementById('karno-form').submit();
-});
+    function gray(n) {
+        return n ^ (n >> 1);
+    }
+
+    function generateKmap() {
+        let html = "";
+        for (let i = 0; i < 4; i++) {
+            html += "<tr>";
+            for (let j = 0; j < 4; j++) {
+                const index = gray(i) * 4 + gray(j);
+                html += `<td class="kmap-cell" onclick="toggle(${index}, this)">${values[index]}</td>`;
+            }
+            html += "</tr>";
+        }
+        kmap.innerHTML = html;
+    }
+
+    function toggle(index, el) {
+        values[index] = 1 - values[index];
+        el.classList.toggle("active");
+        el.textContent = values[index];
+    }
+
+    async function minimize() {
+        const variables = document.getElementById("variables").value;
+        const method = document.getElementById("method").value;
+
+        const formData = new FormData();
+        formData.append("method", method);
+        formData.append("variables", variables);
+        formData.append("values", values.join(","));
+
+        const response = await fetch("/karno/minimize", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await response.json();
+        document.getElementById("result").innerText = data.result;
+    }
+
+    generateKmap();
 </script>
-
-<style>
-.karno-cell {
-    cursor: pointer;
-    user-select: none;
-    width: 60px;
-    height: 60px;
-    font-size: 1.2rem;
-    transition: background-color 0.2s;
-}
-.karno-cell:hover {
-    background-color: #f8f9fa !important;
-}
-.karno-table th {
-    font-weight: normal;
-    background-color: #f8f9fa;
-}
-</style>
-{% endblock %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

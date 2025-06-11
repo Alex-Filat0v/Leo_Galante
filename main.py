@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from routes.user_routes import router as user_router
-from routes.karno_routes import router as karno_router
+from routes.karno_routes import karno_router
 from modules.database_module import db
 from modules.auth_module import get_current_user
 import uvicorn
