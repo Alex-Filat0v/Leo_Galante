@@ -1,10 +1,55 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "base.html" %}
 
-</body>
-</html>
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">{{ "Register" if mode == "register" else "Login" }}</h4>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                <div class="alert alert-danger">
+                    {% if error == "username_exists" %}
+                    Username already exists. Please choose another one.
+                    {% elif error == "invalid_credentials" %}
+                    Invalid username or password
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if message %}
+                <div class="alert alert-success">
+                    {% if message == "registration_success" %}
+                    Registration successful! Please login
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" required
+                               value="{{ request.query_params.get('username', '') }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        {{ "Register" if mode == "register" else "Login" }}
+                    </button>
+                </form>
+
+                <div class="mt-3 text-center">
+                    {% if mode == "register" %}
+                    Already have an account? <a href="/login">Login here</a>
+                    {% else %}
+                    Don't have an account? <a href="/register">Register here</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
